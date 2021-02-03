@@ -76,7 +76,7 @@ func (p *collectRule) Metrics() []*dataobj.MetricValue {
 }
 
 // prepareMetrics
-func (p *collectRule) prepareMetrics() (metrics []*dataobj.MetricValue, err error) {
+func (p *collectRule) prepareMetrics(pluginConfig *config.PluginConfig) (metrics []*dataobj.MetricValue, err error) {
 	p.RLock()
 	defer p.RUnlock()
 
@@ -88,19 +88,19 @@ func (p *collectRule) prepareMetrics() (metrics []*dataobj.MetricValue, err erro
 	ts := metrics[0].Timestamp
 	nid := strconv.FormatInt(p.Nid, 10)
 
-	pluginConfig, ok := config.GetPluginConfig(p.PluginName())
-	if !ok {
-		return
-	}
-
 	if pluginConfig.Mode == config.PluginModeWhitelist && len(pluginConfig.Metrics) == 0 {
-		return
+		return nil, nil
 	}
 
-	vars := map[string]*dataobj.MetricValue{}
+	vars := map[string][]*dataobj.MetricValue{}
 	for _, v := range metrics {
 		logger.Debugf("get v[%s] %f", v.Metric, v.Value)
-		vars[v.Metric] = v
+		if _, ok := vars[v.Metric]; !ok {
+			vars[v.Metric] = []*dataobj.MetricValue{v}
+		} else {
+			vars[v.Metric] = append(vars[v.Metric], v)
+		}
+
 	}
 
 	metrics = metrics[:0]
@@ -123,31 +123,33 @@ func (p *collectRule) prepareMetrics() (metrics []*dataobj.MetricValue, err erro
 	}
 
 	for k, v := range vars {
-		if metric, ok := pluginConfig.Metrics[k]; ok {
-			metrics = append(metrics, &dataobj.MetricValue{
-				Nid:          nid,
-				Metric:       k,
-				Timestamp:    ts,
-				Step:         p.Step,
-				CounterType:  metric.Type,
-				TagsMap:      v.TagsMap,
-				Value:        v.Value,
-				ValueUntyped: v.ValueUntyped,
-			})
-		} else {
-			if pluginConfig.Mode == config.PluginModeWhitelist {
-				continue
+		for _, v2 := range v {
+			if metric, ok := pluginConfig.Metrics[k]; ok {
+				metrics = append(metrics, &dataobj.MetricValue{
+					Nid:          nid,
+					Metric:       k,
+					Timestamp:    ts,
+					Step:         p.Step,
+					CounterType:  metric.Type,
+					TagsMap:      v2.TagsMap,
+					Value:        v2.Value,
+					ValueUntyped: v2.ValueUntyped,
+				})
+			} else {
+				if pluginConfig.Mode == config.PluginModeWhitelist {
+					continue
+				}
+				metrics = append(metrics, &dataobj.MetricValue{
+					Nid:          nid,
+					Metric:       k,
+					Timestamp:    ts,
+					Step:         p.Step,
+					CounterType:  "GAUGE",
+					TagsMap:      v2.TagsMap,
+					Value:        v2.Value,
+					ValueUntyped: v2.ValueUntyped,
+				})
 			}
-			metrics = append(metrics, &dataobj.MetricValue{
-				Nid:          nid,
-				Metric:       k,
-				Timestamp:    ts,
-				Step:         p.Step,
-				CounterType:  "GAUGE",
-				TagsMap:      v.TagsMap,
-				Value:        v.Value,
-				ValueUntyped: v.ValueUntyped,
-			})
 		}
 	}
 	return

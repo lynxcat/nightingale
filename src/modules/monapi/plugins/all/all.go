@@ -13,6 +13,8 @@ import (
 	_ "github.com/didi/nightingale/src/modules/monapi/plugins/elasticsearch"
 	_ "github.com/didi/nightingale/src/modules/monapi/plugins/tengine"
 	_ "github.com/didi/nightingale/src/modules/monapi/plugins/zookeeper"
+	_ "github.com/didi/nightingale/src/modules/monapi/plugins/rabbitmq"
+	_ "github.com/didi/nightingale/src/modules/monapi/plugins/haproxy"
 
 	// local
 	_ "github.com/didi/nightingale/src/modules/monapi/plugins/log"

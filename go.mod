@@ -34,7 +34,6 @@ require (
 	github.com/prometheus/common v0.9.1 // indirect
 	github.com/robfig/go-cache v0.0.0-20130306151617-9fc39e0dbf62 // indirect
 	github.com/shirou/gopsutil v3.20.11+incompatible // indirect
-	github.com/soniah/gosnmp v1.25.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/viper v1.7.1
 	github.com/streadway/amqp v1.0.0
@@ -85,3 +84,6 @@ replace go.etcd.io/bbolt => go.etcd.io/bbolt v1.3.5
 
 // https://github.com/ory/dockertest/issues/212
 replace golang.org/x/sys => golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6
+
+// for transfer
+replace google.golang.org/grpc => google.golang.org/grpc v1.29.1

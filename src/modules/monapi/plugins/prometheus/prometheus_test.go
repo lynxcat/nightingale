@@ -7,7 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/didi/nightingale/src/modules/monapi/plugins"
+	"github.com/didi/nightingale/src/common/dataobj"
+	"github.com/didi/nightingale/src/modules/prober/manager"
+	"github.com/influxdata/telegraf"
 )
 
 const sampleTextFormat = `# HELP test_metric An untyped metric with a timestamp
@@ -38,6 +40,11 @@ helo_stats_test_histogram_count{region="bj",zone="test_1"} 56
 # HELP go_goroutines Number of goroutines that currently exist.
 # TYPE go_goroutines gauge
 go_goroutines 15 1490802350000
+# HELP test_guage guage
+# TYPE test_guage gauge
+test_guauge{label="1"} 1.1
+test_guauge{label="2"} 1.2
+test_guauge{label="3"} 1.3
 `
 
 func TestCollect(t *testing.T) {
@@ -50,7 +57,39 @@ func TestCollect(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 100)
 
-	plugins.PluginTest(t, &PrometheusRule{
+	PluginTest(t, &PrometheusRule{
 		URLs: []string{"http://localhost:18080/metrics"},
 	})
+}
+
+type telegrafPlugin interface {
+	TelegrafInput() (telegraf.Input, error)
+}
+
+func PluginTest(t *testing.T, plugin telegrafPlugin) telegraf.Input {
+	input, err := plugin.TelegrafInput()
+	if err != nil {
+		t.Error(err)
+	}
+
+	PluginInputTest(t, input)
+
+	return input
+}
+
+func PluginInputTest(t *testing.T, input telegraf.Input) {
+	metrics := []*dataobj.MetricValue{}
+
+	acc, err := manager.NewAccumulator(manager.AccumulatorOptions{Name: "plugin-test", Metrics: &metrics})
+	if err != nil {
+		t.Error(err)
+	}
+
+	if err = input.Gather(acc); err != nil {
+		t.Error(err)
+	}
+
+	for k, v := range metrics {
+		t.Logf("%d %s %s %f", k, v.CounterType, v.PK(), v.Value)
+	}
 }
